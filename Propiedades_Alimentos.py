@@ -5,21 +5,25 @@ df = pd.read_csv('Propiedades.csv', index_col=0)
 
 class PropAlimentos:
     def temperatura_inicioCongelacion(producto):
+        '''producto: Producto a evaluar.\nResultado: Temperatura inicial de congelación(°C).'''
         t_congelacion = df['Ti'][producto]
         return t_congelacion
 
     def fraccion_agua(producto):
+        '''producto: Producto a evaluar.\nResultado: Proporción de agua en el producto(0 a 1).'''
         return (df['xwo'][producto])/100
 
     def Tinicial_Cong(producto):
         return df['Ti'][producto]
 
     def agua_ligada(producto):
+        '''producto: Producto a evaluar.\nResultado: Proporción de agua ligada(0 a 1).'''
         xp = df['xp'][producto]
         xb = 0.4*xp
         return xb
     
     def fraccion_hielo_Tchigeov(producto, t):
+        '''producto: Producto a evaluar; t: Temperatura del producto.\nResultado: Proporción de contenido de hielo(0 a 1).'''
         tf = df['Ti'][producto]
         xwo = df['xwo'][producto]/100
         if t <= tf:
@@ -30,6 +34,7 @@ class PropAlimentos:
         return{'xice': xice, 'xu': xu}
     
     def fraccion_hielo_Miles(producto, t):
+        '''producto: Producto a evaluar; t: Temperatura del producto.\nResultado: Proporción de contenido de hielo (0 a 1).'''
         tf = df['Ti'][producto]
         xwo = df['xwo'][producto]/100
         xb = 0.4*df['xp'][producto]/100
@@ -41,6 +46,7 @@ class PropAlimentos:
         return{'xice': xice, 'xu': xu}
     
     def Cp_SobreCong(producto, t):
+        '''producto: Producto a evaluar; t: Temperatura del producto(°C).\Resultado: Calor específico arriba del punto de congelación(KJ/(Kg*K)).'''
         if df['Ti'][producto] < t:
             xwo = df['xwo'][producto]/100
             xp = df['xp'][producto]/100
@@ -61,6 +67,7 @@ class PropAlimentos:
         return c
     
     def Cp_BajoConge(producto, t):
+        '''producto: Producto a evaluar; t: Temperatura del producto(°C).\Resultado: Calor específico debajo del punto de congelación(KJ/(Kg*K)).'''
         tf = df['Ti'][producto]
         xp = df['xp'][producto]/100
         xwo = df['xwo'][producto]/100
@@ -69,6 +76,7 @@ class PropAlimentos:
         return ca
     
     def Entalpia_SobreCong(producto, t):
+        '''producto: Producto a evaluar; t: Temperatura del producto(°C).\Resultado: Entalpía arriba del punto de congelación(KJ/Kg).'''
         tf = df['Ti'][producto]
         tr = -40
         xwo = df['xwo'][producto]/100
@@ -80,6 +88,7 @@ class PropAlimentos:
         return H
     
     def Entalpia_Cong(producto):
+        '''producto: Producto a evaluar; t: Temperatura del producto(°C).\Resultado: Entalpía de congelación(KJ/Kg).'''
         tf = df['Ti'][producto]
         tr = -40
         xwo = df['xwo'][producto]/100
@@ -90,6 +99,7 @@ class PropAlimentos:
         return H
     
     def Entalpia_BajoCong(producto, t):
+        '''producto: Producto a evaluar; t: Temperatura del producto(°C).\Resultado: Entalpía debajo del punto de congelación(KJ/Kg).'''
         tr = -40
         tf = df['Ti'][producto]
         xwo = df['xwo'][producto]/100
@@ -157,6 +167,7 @@ class PropAlimentos:
         return k
     
     def Densidad(producto, t):
+        '''producto: Producto a evaluar; t: Temperatura del producto(°C).\Resultado: Densidad del producto(Kg/m³).'''
         tf=df['Ti'][producto]
         xp=df['xp'][producto]/100
         xf=df['xf'][producto]/100
@@ -203,6 +214,9 @@ class PropAlimentos:
         return(round(a, 3)) 
 
     def Tiempo_Enfriamiento(producto, Tm, Ti, T, dimensiones, forma, h):
+        '''producto: Producto a evaluar; Tm: Temperatura del cámara(°C); Ti: Temperatura inicial;
+        T: Temperatura final; dimensiones: Lista con las tres dimensiones(m);
+        forma: Forma del producto. Opciones -> (Placa Infinita, Varilla Rectangular Infinita, Bloque, Cilindro Infinito, Elipse Infinito, Cilindro Achatado, Cilindro Corto, Esfera, Elipsoide); h: Coeficiente de convección(W/(m²K)).\Resultado: Tiempo de enfriamiento(s).'''
         t = (Ti - T)/2
         rho = PropAlimentos.Densidad(producto, t)
         k = PropAlimentos.Conductividad_Perpendicular(producto, t)
@@ -213,7 +227,7 @@ class PropAlimentos:
         beta1 = min(dimensiones)/L
         beta2 = max(dimensiones)/L
         GParams = {
-            'Losa Infinita':{'N': 1, 'p1':0, 'p2':0, 'p3':0, 'y1':1e20, 'y2':1e20, 'l':1},
+            'Placa Infinita':{'N': 1, 'p1':0, 'p2':0, 'p3':0, 'y1':1e20, 'y2':1e20, 'l':1},
             'Varilla Rectangular Infinita': {'N': 2, 'p1':0.75, 'p2':0, 'p3':-1, 'y1':(4*beta1)/math.pi, 'y2':1e20, 'l':(4*beta1)/math.pi},
             'Bloque': {'N': 3, 'p1':0.75, 'p2':0.75, 'p3':-1, 'y1':(4*beta1)/math.pi, 'y2':1.5*beta2, 'l':(4*beta1)/math.pi},
             'Cilindro Infinito': {'N': 2, 'p1':1.01, 'p2':0, 'p3':0, 'y1':1, 'y2':1e20, 'l':1},
@@ -245,10 +259,10 @@ class PropAlimentos:
         theta = ((3*rho*c*(Lbiot**2))/(k*E*omega**2)*(math.log(jm/Y)))
         return (round(theta, 2))
     
-    def Tiempo_Congelacion_EHTD(producto, Ti, Te, dimensiones, Tm, h, forma):
-
-        '''producto: Producto a evaluar; Ti: Temperatura inicial del centro del producto(°C); \ndimensiones: Lista con las dimensiones del producto en metros;\nTm: Temperatura del espacio de Tiempo_Enfriamiento(°C); h: Coeficiente de transferencia por convección (W/(m²K);\nforma: "Esfera", "Placa Infinita", "Cilindro Infinito", "Bloque")'''
-
+    def Tiempo_Congelacion_EHTD(producto, Tm, Ti, Te, dimensiones, forma, h):
+        '''producto: Producto a evaluar; Tm: Temperatura del cámara(°C); Ti: Temperatura inicial;
+        Te: Temperatura final; dimensiones: Lista con las tres dimensiones(m);
+        forma: Forma del producto. Opciones -> (Placa Infinita, Bloque, Cilindro Infinito, Esfera); h: Coeficiente de convección(W/(m²K)).\Resultado: Tiempo de enfriamiento(s).'''
         Tf=df['Ti'][producto]
         Di=PropAlimentos.Densidad(producto=producto, t=Ti)
         De=PropAlimentos.Densidad(producto=producto, t=Te)

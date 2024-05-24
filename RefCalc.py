@@ -37,7 +37,7 @@ class CompresorReciprocante:
 
     def eficiencia_volumetrica(self, claro, recalentamiento_aspiracion, ps, pd, pld=0.01, pls=0.01, recalentamiento_camara=0.0):
         '''
-        ps = Presión de succión (Bar)./n
+        ps = Presión de aspiración (Bar)./n
         pd = Presión de descarga (Bar)/N
         claro = Porcentaje de claro de válvulas dividido entre cien./n
         pls = Caída de presión en válvulas de descarga(Bar)./n
@@ -57,17 +57,23 @@ class CompresorReciprocante:
         nv = (1 + claro - claro*((Pc/Pb)**(1/n)))*(d2/d1)
         return nv
 
-    def flujo_masico(self, ps, claro, ssh, nv=1.0, i_sh=10):
+    def flujo_masico(self, ps, recalentamiento_aspiracion, nv=1.0):
+        '''ps: Presión de aspiración; recalentamiento_aspiracion: Recalentamiento en aspiración;
+        nv: Eficiencia volumétrica.\nResultado: Flujo másico (Kg/s)'''
         try:
+            refrigerante = self.refrigerantes[self.ref]
             ps = (ps+1.01325)*100000
-            ts = CP.PropsSI('T', 'P', ps, 'Q', 0, self.refrigerantes[self.ref]) + ssh
-            densidad_vapor = CP.PropsSI('D', 'T|gas', ts, 'P', ps, self.refrigerantes[self.ref])
+            ts = CP.PropsSI('T', 'P', ps, 'Q', 1, refrigerante) + recalentamiento_aspiracion
+            densidad_vapor = CP.PropsSI('D', 'T|gas', ts, 'P', ps, refrigerante)
             flujo = (self.vol*nv*densidad_vapor)/3600
         except:
             print('Datos proporcionados son erróneos')
         return flujo
 
     def trabajo_compReciprocante(self, ps, pd, recalentamiento_aspiracion, flujo_refrigerante, recalentamiento_camara=0.0, ni=1.0):
+        '''ps: Presión de aspiración; pd: Presión de descarga; recalentamiento_aspiracion: Recalentamiento en aspiración;
+        ni: Eficiencia isentrópica; flujo_refrigerante: Flujo másico del compresor (Kg/s); recalentamiento_camara: aumento de
+        temperatura en el refrigerante al ingresar a la cámara de compresión (K).\nResultado: Potencia de compresión (Kw)'''
         refrigerante = self.refrigerantes[self.ref]
         Pb = (ps+1.01325)*100000
         Pc = (pd+1.01325)*100000
@@ -83,15 +89,18 @@ class CompresorReciprocante:
         w = w*flujo_refrigerante/(ni*1000)
         return w
 
-    def eficiencia_isentropica(self, ps, pd, td, desplazamiento):
+    def eficiencia_isentropica(self, ps, recalentamiento_aspiracion, pd, td):
+        '''ps: Presión de aspiración; recalentamiento_aspiracion: Recalentamiento en aspiración;
+        pd: Presión de descarga; td: Temperatura de descarga.\nResultado: Eficiencia isentrópica'''
+        refrigerante = self.refrigerantes[self.ref]
         ps = (ps + 1.01325)*100000
         pd = (pd + 1.01325)*100000
         td = td + 273.15
-        ts = CP.PropsSI('T', 'P', ps, 'Q', 0, self.refrigerantes[self.ref]) + ssh
-        hi = CP.PropsSI('H','T', ts, 'P', ps, self.refrigerantes[self.ref])
-        s = CP.PropsSI('S','T', ts,'P', ps, self.refrigerantes[self.ref])
-        hs = CP.PropsSI('H','S', s,'P', pd, self.refrigerantes[self.ref])
-        hr = CP.PropsSI('H','T', td,'P', pd, self.refrigerantes[self.ref])
+        ts = CP.PropsSI('T', 'P', ps, 'Q', 0, refrigerante) + ssh
+        hi = CP.PropsSI('H','T', ts, 'P', ps, refrigerante)
+        s = CP.PropsSI('S','T', ts,'P', ps, refrigerante)
+        hs = CP.PropsSI('H','S', s,'P', pd, refrigerante)
+        hr = CP.PropsSI('H','T', td,'P', pd, refrigerante)
         self.ni = (hs - hi)/(hr - hi)
         return self.ni
 
@@ -113,14 +122,15 @@ class CompresorScroll:
 
     def trabajo_compresion(self, ps, pd, recalentamiento_aspiracion, desplazamiento, Vr, nv=1):
         '''
-        ps: Presión de aspiración(bar); pd: Presión de condensación(bar); desplazamiento: Desplazamiento volumétrico(m³/h); Vr: Relación de volumen; nv: Eficiencia volumétrica(Default=1.0).\nResultado: Potencia consumida en Kw
+        ps: Presión de aspiración(bar); pd: Presión de condensación(bar); desplazamiento: Desplazamiento volumétrico(m³/h); Vr: Relación de volumen; nv: Eficiencia volumétrica(Default=1.0).\nResultado: Potencia de compresión (Kw)
         '''
+        refrigerante = self.refrigerantes[self.ref]
         Pb = (ps+1.01325)*100000;#Presión de aspiración
         Pc = (pd+1.01325)*100000;#Presión de descarga
-        ts = CP.PropsSI('T', 'P', Pb, 'Q', 1, self.refrigerantes[self.ref]) + recalentamiento_aspiracion;#Temperatura de succión.
-        cp = CP.PropsSI('Cpmass', 'T|gas', ts, 'P', Pb, self.refrigerantes[self.ref])
-        cv = CP.PropsSI('Cvmass', 'T|gas', ts, 'P', Pb, self.refrigerantes[self.ref])
-        D = CP.PropsSI('D', 'T|gas', ts, 'P', Pb, self.refrigerantes[self.ref]);#Volumen específico succión
+        ts = CP.PropsSI('T', 'P', Pb, 'Q', 1, refrigerante) + recalentamiento_aspiracion;#Temperatura de succión.
+        cp = CP.PropsSI('Cpmass', 'T|gas', ts, 'P', Pb, refrigerante)
+        cv = CP.PropsSI('Cvmass', 'T|gas', ts, 'P', Pb, refrigerante)
+        D = CP.PropsSI('D', 'T|gas', ts, 'P', Pb, refrigerante);#Volumen específico succión
         vb = 1/D
         n = cp/cv
         w = (nv*(desplazamiento/3600)*D)*((n/(n-1)) * (Pb*vb)*((Vr**(n-1)) -1) - (vb/Vr)*(Pb*(Vr**n) - Pc))
@@ -143,10 +153,11 @@ class EvaporadorDX:
         def capacidad_frigorifica(self, flujo_refrigerante):
             pc = (self.pc+1.01325)*100000
             pe = (self.pe+1.01325)*100000
-            tc = CP.PropsSI('T', 'P', pc, 'Q', 0, self.refrigerantes[self.ref])
-            te = CP.PropsSI('T', 'P', pe, 'Q', 0, self.refrigerantes[self.ref])
-            hi = CP.PropsSI('H','T|liquid', (tc-self.sc),'P', pc , self.refrigerantes[self.ref])
-            hf = CP.PropsSI('H','T|gas', (te+self.sh), 'P', pe, self.refrigerantes[self.ref])
+            refrigerante = self.refrigerantes[self.ref]
+            tc = CP.PropsSI('T', 'P', pc, 'Q', 0, refrigerante)
+            te = CP.PropsSI('T', 'P', pe, 'Q', 0, refrigerante)
+            hi = CP.PropsSI('H','T|liquid', (tc-self.sc),'P', pc , refrigerante)
+            hf = CP.PropsSI('H','T|gas', (te+self.sh), 'P', pe, refrigerante)
             deltah = (hf - hi)/1000
             capacidad = flujo_refrigerante*deltah
             return capacidad
